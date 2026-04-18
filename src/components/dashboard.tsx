@@ -108,30 +108,6 @@ export const Dashboard: React.FC = () => {
           margin: 0 auto;
         }
 
-        .page-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-end;
-          margin-bottom: var(--space-xl);
-        }
-
-        .btn-primary {
-          background: var(--accent-primary);
-          color: #000;
-          font-weight: 600;
-          padding: var(--space-md) var(--space-lg);
-          border-radius: var(--radius-md);
-          display: flex;
-          align-items: center;
-          gap: var(--space-sm);
-          transition: transform 0.2s;
-        }
-
-        .btn-primary:hover {
-          transform: translateY(-2px);
-          filter: brightness(1.1);
-        }
-
         .stats-grid {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
