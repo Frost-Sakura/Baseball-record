@@ -5,7 +5,19 @@ export interface Player {
   name: string;
   number: string;
   position: string[];
-  teamId?: number;
+  teamId: number;
+  
+  // 詳細資訊 (選填)
+  details?: {
+    battingSide: 'L' | 'R' | 'S';
+    throwingSide: 'L' | 'R';
+    birthDate?: string;
+    height?: number;
+    weight?: number;
+    notes?: string;
+  };
+
+  // 統計數據
   stats: {
     avg: number;
     hr: number;
@@ -18,7 +30,7 @@ export interface Team {
   id?: number;
   name: string;
   coach: string;
-  players: number[]; // Player IDs
+  isPrimary: boolean; // 標記是否為「我的球隊」
 }
 
 export interface Game {
@@ -40,9 +52,9 @@ export class SmartScoreDB extends Dexie {
 
   constructor() {
     super('SmartScoreDB');
-    this.version(1).stores({
-      players: '++id, name, teamId',
-      teams: '++id, name',
+    this.version(4).stores({ // 升級版本到 4
+      players: '++id, name, number, teamId',
+      teams: '++id, name, isPrimary',
       games: '++id, date, homeTeamId, awayTeamId, status'
     });
   }
