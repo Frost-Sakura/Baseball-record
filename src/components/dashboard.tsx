@@ -1,230 +1,102 @@
-import React, { useState } from 'react';
-import { db, type Player } from '../services/db';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { UserPlus, Activity, Database, X } from 'lucide-react';
+import React from 'react';
+import { db } from '../services/db';
+import { useQuery } from '@tanstack/react-query';
+import { Activity, Database, Shield, ShieldAlert, Star } from 'lucide-react';
 
 export const Dashboard: React.FC = () => {
-  const queryClient = useQueryClient();
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  
-  const { data: players, isLoading } = useQuery({
-    queryKey: ['players'],
-    queryFn: () => db.players.toArray(),
-  });
+  // 抓取所有球隊與球員以進行連動統計
+  const { data: teams } = useQuery({ queryKey: ['teams'], queryFn: () => db.teams.toArray() });
+  const { data: players, isLoading } = useQuery({ queryKey: ['players'], queryFn: () => db.players.toArray() });
 
-  const handleAddPlayer = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    
-    const newPlayer: Player = {
-      name: formData.get('name') as string,
-      number: formData.get('number') as string,
-      position: (formData.get('position') as string).split(','),
-      stats: { avg: 0, hr: 0, rbi: 0, era: 0 }
-    };
-
-    await db.players.add(newPlayer);
-    queryClient.invalidateQueries({ queryKey: ['players'] });
-    setIsModalOpen(false);
-  };
+  const primaryTeamIds = teams?.filter(t => t.isPrimary).map(t => t.id) || [];
+  const primaryPlayers = players?.filter(p => primaryTeamIds.includes(p.teamId)) || [];
+  const otherPlayers = players?.filter(p => !primaryTeamIds.includes(p.teamId)) || [];
 
   return (
     <div className="dashboard">
       <header className="page-header">
         <div className="header-info">
           <h1>總覽控制台</h1>
-          <p>歡迎回來，這是目前的球隊概況</p>
+          <p>這是你目前的球隊數據概況</p>
         </div>
-        <button className="btn-primary" onClick={() => setIsModalOpen(true)}>
-          <UserPlus size={18} />
-          <span>新增球員</span>
-        </button>
       </header>
 
       <div className="stats-grid">
-        <StatCard icon={<Activity color="var(--accent-primary)" />} label="活躍賽事" value="4" />
-        <StatCard icon={<Database color="var(--accent-blue)" />} label="總註冊球員" value={players?.length.toString() || '0'} />
+        <StatCard icon={<Activity color="var(--accent-primary)" strokeWidth={1.5} />} label="活躍賽事" value="4" />
+        <StatCard 
+          icon={<Star fill="var(--accent-primary)" color="var(--accent-primary)" size={20} />} 
+          label="本隊球員" 
+          value={primaryPlayers.length.toString()} 
+        />
+        <StatCard 
+          icon={<Database color="var(--accent-blue)" strokeWidth={1.5} />} 
+          label="他隊球員" 
+          value={otherPlayers.length.toString()} 
+        />
       </div>
 
       <section className="recent-activity glass">
-        <h3>最近加入的球員</h3>
+        <div className="section-header">
+          <h3>最近加入的球員</h3>
+        </div>
         <div className="player-list">
           {isLoading ? (
-            <p>載入中...</p>
+            <p className="loading-text">載入中...</p>
           ) : players?.length === 0 ? (
             <p className="empty-state">目前還沒有球員資料</p>
           ) : (
-            players?.map((p) => (
-              <div key={p.id} className="player-item">
-                <div className="avatar">{p.name[0]}</div>
-                <div className="info">
-                  <span className="name">{p.name}</span>
-                  <span className="pos">#{p.number} | {p.position.join(', ')}</span>
+            players?.slice(-5).reverse().map((p) => {
+              const isOurPlayer = primaryTeamIds.includes(p.teamId);
+              return (
+                <div key={p.id} className="player-item">
+                  <div className={`avatar ${isOurPlayer ? 'our-team' : ''}`}>
+                    {isOurPlayer ? <Star size={16} fill="currentColor" /> : p.name[0]}
+                  </div>
+                  <div className="info">
+                    <div className="name-wrapper">
+                      <span className="name">{p.name}</span>
+                      {isOurPlayer && <Shield size={12} color="var(--accent-primary)" strokeWidth={2} />}
+                    </div>
+                    <span className="pos">#{p.number} | {p.position.join(', ')}</span>
+                  </div>
+                  <div className={`team-tag ${isOurPlayer ? 'primary' : ''}`}>
+                    {isOurPlayer ? '本隊' : '他隊'}
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </section>
 
-      {/* 新增球員彈窗 */}
-      {isModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal-content glass">
-            <div className="modal-header">
-              <h2>新增球員設定</h2>
-              <button className="close-btn" onClick={() => setIsModalOpen(false)}>
-                <X size={24} />
-              </button>
-            </div>
-            
-            <form onSubmit={handleAddPlayer} className="player-form">
-              <div className="form-group">
-                <label>球員姓名</label>
-                <input name="name" type="text" placeholder="例如：王小明" required />
-              </div>
-              <div className="form-group">
-                <label>背號</label>
-                <input name="number" type="text" placeholder="例如：1" required />
-              </div>
-              <div className="form-group">
-                <label>守備位置 (以逗號分隔)</label>
-                <input name="position" type="text" placeholder="例如：投手,一壘手" required />
-              </div>
-              
-              <div className="form-actions">
-                <button type="button" className="btn-secondary" onClick={() => setIsModalOpen(false)}>取消</button>
-                <button type="submit" className="btn-primary">確認新增</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
       <style>{`
-        .dashboard {
-          padding: var(--space-xl);
-          max-width: 1200px;
-          margin: 0 auto;
-        }
+        .dashboard { padding: var(--space-xl) 40px; max-width: 1200px; margin: 0 auto; }
+        .header-info h1 { font-size: 2.2rem; font-weight: 900; margin-bottom: 4px; }
+        
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 24px; margin-bottom: 40px; }
+        .stat-card { padding: 24px; border-radius: 20px; display: flex; align-items: center; gap: 16px; border: 1px solid var(--border-color); }
+        .stat-card .label { font-size: 0.85rem; color: var(--text-muted); font-weight: 600; }
+        .stat-card .value { font-size: 1.8rem; font-weight: 900; color: var(--text-primary); }
 
-        .stats-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-          gap: var(--space-lg);
-          margin-bottom: var(--space-xl);
-        }
+        .recent-activity { padding: 32px; border-radius: 24px; border: 1px solid var(--border-color); }
+        .section-header { margin-bottom: 24px; }
+        .section-header h3 { font-size: 1.2rem; font-weight: 800; }
 
-        .stat-card {
-          padding: var(--space-lg);
-          border-radius: var(--radius-lg);
-          display: flex;
-          align-items: center;
-          gap: var(--space-md);
-        }
+        .player-list { display: flex; flex-direction: column; gap: 12px; }
+        .player-item { display: flex; align-items: center; gap: 16px; padding: 16px; background: rgba(255, 255, 255, 0.03); border-radius: 16px; transition: all 0.2s; border: 1px solid transparent; }
+        .player-item:hover { background: rgba(255, 255, 255, 0.05); border-color: var(--border-color); }
 
-        .recent-activity {
-          padding: var(--space-xl);
-          border-radius: var(--radius-lg);
-        }
+        .avatar { width: 44px; height: 44px; border-radius: 12px; background: var(--bg-tertiary); display: flex; align-items: center; justify-content: center; font-weight: 800; color: var(--text-secondary); }
+        .avatar.our-team { background: rgba(46, 204, 113, 0.15); color: var(--accent-primary); border: 1px solid rgba(46, 204, 113, 0.3); }
 
-        .player-list {
-          display: flex;
-          flex-direction: column;
-          gap: var(--space-md);
-        }
+        .name-wrapper { display: flex; align-items: center; gap: 6px; }
+        .name { font-weight: 700; font-size: 1.1rem; }
+        .pos { font-size: 0.85rem; color: var(--text-muted); }
 
-        .player-item {
-          display: flex;
-          align-items: center;
-          gap: var(--space-md);
-          padding: var(--space-md);
-          background: var(--bg-tertiary);
-          border-radius: var(--radius-md);
-        }
+        .team-tag { margin-left: auto; font-size: 0.75rem; font-weight: 800; padding: 4px 10px; border-radius: 6px; background: var(--bg-tertiary); color: var(--text-muted); }
+        .team-tag.primary { background: var(--accent-primary); color: #000; }
 
-        .avatar {
-          width: 40px;
-          height: 40px;
-          border-radius: 50%;
-          background: var(--accent-blue);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-weight: 700;
-        }
-
-        .modal-overlay {
-          position: fixed;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          background: rgba(0, 0, 0, 0.7);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 1000;
-          backdrop-filter: blur(4px);
-        }
-
-        .modal-content {
-          width: 400px;
-          padding: var(--space-xl);
-          border-radius: var(--radius-lg);
-          position: relative;
-        }
-
-        .modal-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: var(--space-xl);
-        }
-
-        .close-btn {
-          background: none;
-          color: var(--text-muted);
-        }
-
-        .player-form {
-          display: flex;
-          flex-direction: column;
-          gap: var(--space-lg);
-        }
-
-        .form-group {
-          display: flex;
-          flex-direction: column;
-          gap: var(--space-xs);
-        }
-
-        .form-group label {
-          font-size: 0.9rem;
-          color: var(--text-secondary);
-        }
-
-        .form-group input {
-          background: var(--bg-tertiary);
-          border: 1px solid var(--border-color);
-          padding: var(--space-md);
-          border-radius: var(--radius-md);
-          color: var(--text-primary);
-        }
-
-        .form-actions {
-          display: flex;
-          justify-content: flex-end;
-          gap: var(--space-md);
-          margin-top: var(--space-md);
-        }
-
-        .btn-secondary {
-          background: var(--bg-tertiary);
-          color: var(--text-primary);
-          padding: var(--space-md) var(--space-lg);
-          border-radius: var(--radius-md);
-        }
+        .loading-text { color: var(--text-muted); text-align: center; padding: 20px; }
       `}</style>
     </div>
   );
@@ -234,8 +106,8 @@ const StatCard: React.FC<{ icon: React.ReactNode; label: string; value: string }
   <div className="stat-card glass">
     <div className="icon">{icon}</div>
     <div className="stat-info">
-      <span className="label">{label}</span>
-      <span className="value">{value}</span>
+      <div className="label">{label}</div>
+      <div className="value">{value}</div>
     </div>
   </div>
 );

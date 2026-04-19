@@ -1,5 +1,5 @@
 import React from 'react';
-import { Settings as SettingsIcon, Shield, Info, Database, Moon, Globe } from 'lucide-react';
+import { Settings as SettingsIcon, Info, Database, Moon, Globe } from 'lucide-react';
 
 export const Settings: React.FC = () => {
   return (
@@ -12,7 +12,7 @@ export const Settings: React.FC = () => {
       <div className="settings-grid">
         <section className="settings-section glass">
           <div className="section-title">
-            <SettingsIcon size={20} />
+            <SettingsIcon size={20} strokeWidth={1.5} />
             <h3>一般設定</h3>
           </div>
           <div className="setting-item">
@@ -21,7 +21,10 @@ export const Settings: React.FC = () => {
               <span className="desc">切換深色或淺色視覺主題</span>
             </div>
             <div className="control">
-              <Moon size={20} />
+              <button className="btn-secondary small">
+                <Moon size={18} strokeWidth={1.5} />
+                <span>切換</span>
+              </button>
             </div>
           </div>
           <div className="setting-item">
@@ -30,14 +33,17 @@ export const Settings: React.FC = () => {
               <span className="desc">選擇介面顯示語言</span>
             </div>
             <div className="control">
-              <Globe size={20} />
+              <button className="btn-secondary small">
+                <Globe size={18} strokeWidth={1.5} />
+                <span>繁體中文</span>
+              </button>
             </div>
           </div>
         </section>
 
         <section className="settings-section glass">
           <div className="section-title">
-            <Database size={20} />
+            <Database size={20} strokeWidth={1.5} />
             <h3>資料管理</h3>
           </div>
           <div className="setting-item">
@@ -45,104 +51,54 @@ export const Settings: React.FC = () => {
               <span className="label">離線資料庫狀態</span>
               <span className="desc">目前的 IndexedDB 儲存狀況</span>
             </div>
-            <button className="btn-outline">備份資料</button>
+            <button className="btn-secondary">備份資料</button>
           </div>
           <div className="setting-item">
             <div className="info">
-              <span className="label">清除快取</span>
-              <span className="desc">刪除本地快取的暫存資料</span>
+              <span className="label">重設系統</span>
+              <span className="desc">刪除所有本地資料（不可復原）</span>
             </div>
-            <button className="btn-outline danger">清除</button>
+            <button className="btn-danger">清除所有資料</button>
           </div>
         </section>
 
         <section className="settings-section glass">
           <div className="section-title">
-            <Info size={20} />
+            <Info size={20} strokeWidth={1.5} />
             <h3>關於 SmartScore</h3>
           </div>
           <div className="about-content">
-            <p>版本：v0.1.0-alpha</p>
-            <p>本專案為開發中版本，旨在提供最高品質的棒球紀錄體驗。</p>
+            <p>版本：v0.1.5-alpha</p>
+            <p>本專案由 Antigravity 驅動，專為業餘與半專業棒球隊設計。</p>
           </div>
         </section>
       </div>
 
       <style>{`
-        .settings-page {
-          padding: var(--space-xl);
-          max-width: 800px;
-          margin: 0 auto;
-        }
+        .settings-page { padding: var(--space-xl); max-width: 800px; margin: 0 auto; }
+        .settings-grid { display: flex; flex-direction: column; gap: var(--space-lg); margin-top: var(--space-xl); }
+        .settings-section { padding: var(--space-xl); border-radius: var(--radius-lg); }
+        .section-title { display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-xl); padding-bottom: var(--space-sm); border-bottom: 1px solid var(--border-color); color: var(--accent-primary); }
+        .setting-item { display: flex; justify-content: space-between; align-items: center; padding: var(--space-md) 0; }
+        .setting-item:not(:last-child) { border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
+        .setting-item .label { display: block; font-weight: 600; font-size: 1.1rem; }
+        .setting-item .desc { font-size: 0.85rem; color: var(--text-muted); }
 
-        .settings-grid {
-          display: flex;
-          flex-direction: column;
-          gap: var(--space-lg);
-          margin-top: var(--space-xl);
-        }
-
-        .settings-section {
-          padding: var(--space-xl);
-          border-radius: var(--radius-lg);
-        }
-
-        .section-title {
-          display: flex;
-          align-items: center;
-          gap: var(--space-sm);
-          margin-bottom: var(--space-xl);
-          padding-bottom: var(--space-sm);
-          border-bottom: 1px solid var(--border-color);
-          color: var(--accent-primary);
-        }
-
-        .setting-item {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: var(--space-md) 0;
-        }
-
-        .setting-item:not(:last-child) {
-          border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        .setting-item .label {
-          display: block;
+        /* 統一按鈕風格 */
+        .btn-danger {
+          background: rgba(231, 76, 60, 0.1);
+          color: #e74c3c;
+          border: 1px solid rgba(231, 76, 60, 0.2);
+          padding: 10px 20px;
+          border-radius: 8px;
           font-weight: 600;
-        }
-
-        .setting-item .desc {
-          font-size: 0.85rem;
-          color: var(--text-muted);
-        }
-
-        .btn-outline {
-          background: none;
-          border: 1px solid var(--border-color);
-          color: var(--text-primary);
-          padding: var(--space-sm) var(--space-md);
-          border-radius: var(--radius-md);
-          font-size: 0.85rem;
           transition: all 0.2s;
         }
+        .btn-danger:hover { background: #e74c3c; color: #fff; }
 
-        .btn-outline:hover {
-          background: var(--bg-tertiary);
-          border-color: var(--text-muted);
-        }
+        .btn-secondary.small { padding: 6px 12px; font-size: 0.9rem; }
 
-        .btn-outline.danger:hover {
-          border-color: #ff4757;
-          color: #ff4757;
-        }
-
-        .about-content {
-          font-size: 0.9rem;
-          color: var(--text-secondary);
-          line-height: 1.6;
-        }
+        .about-content { font-size: 0.9rem; color: var(--text-secondary); line-height: 1.6; }
       `}</style>
     </div>
   );
