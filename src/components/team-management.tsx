@@ -191,9 +191,9 @@ export const TeamManagement: React.FC = () => {
             <div className="confirm-icon"><AlertTriangle size={48} color="#e74c3c" /></div>
             <h2>確認刪除？</h2>
             <p>確定要刪除「{deleteConfirm.name}」？此動作無法復原。</p>
-            <div className="form-actions row">
-              <button type="button" className="btn-secondary flex-1" onClick={() => setDeleteConfirm(null)}>取消</button>
-              <button type="button" className="btn-danger-solid flex-1" onClick={executeDelete}>確認刪除</button>
+            <div className="modal-actions">
+              <button type="button" className="btn-secondary" onClick={() => setDeleteConfirm(null)}>取消</button>
+              <button type="button" className="btn-danger-solid" onClick={executeDelete}>確認刪除</button>
             </div>
           </div>
         </div>
@@ -220,9 +220,9 @@ export const TeamManagement: React.FC = () => {
                 <input type="checkbox" name="isPrimary" id="isPrimary" defaultChecked={editingTeam?.isPrimary} />
                 <label htmlFor="isPrimary">標記為「我的球隊」</label>
               </div>
-              <div className="form-actions row">
-                <button type="button" className="btn-secondary flex-1" onClick={() => setIsTeamModalOpen(false)}>取消</button>
-                <button type="submit" className="btn-primary flex-1">{editingTeam ? '更新' : '建立'}</button>
+              <div className="modal-actions">
+                <button type="button" className="btn-secondary" onClick={() => setIsTeamModalOpen(false)}>取消</button>
+                <button type="submit" className="btn-primary">{editingTeam ? '更新球隊' : '建立球隊'}</button>
               </div>
             </form>
           </div>
@@ -288,9 +288,9 @@ export const TeamManagement: React.FC = () => {
                 </div>
               )}
 
-              <div className="form-actions row">
-                <button type="button" className="btn-secondary flex-1" onClick={() => setIsPlayerModalOpen(false)}>取消</button>
-                <button type="submit" className="btn-primary flex-1">{editingPlayer ? '儲存' : '加入'}</button>
+              <div className="modal-actions">
+                <button type="button" className="btn-secondary" onClick={() => setIsPlayerModalOpen(false)}>取消</button>
+                <button type="submit" className="btn-primary">{editingPlayer ? '儲存球員' : '加入球員'}</button>
               </div>
             </form>
           </div>
@@ -326,18 +326,18 @@ export const TeamManagement: React.FC = () => {
         .player-card { padding: 28px; border-radius: 24px; border: 1px solid var(--border-color); position: relative; overflow: hidden; }
         .player-name { font-size: 1.8rem; font-weight: 800; margin: 20px 0 10px; }
         
-        .position-selector { display: grid; grid-template-columns: repeat(auto-fill, minmax(65px, 1fr)); gap: 6px; background: rgba(0,0,0,0.4); padding: 10px; border-radius: 12px; margin-top: 4px; backdrop-filter: blur(8px); }
-        .pos-chip { padding: 10px 4px; border-radius: 8px; background: rgba(255,255,255,0.05); color: var(--text-muted); font-weight: 700; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; gap: 2px; }
-        .pos-chip.active { background: var(--accent-primary); color: #000; }
+        .position-selector { display: grid; grid-template-columns: repeat(auto-fill, minmax(65px, 1fr)); gap: 8px; background: var(--bg-tertiary); padding: 12px; border-radius: 14px; margin-top: 6px; }
+        .pos-chip { padding: 12px 4px; border-radius: 10px; background: white; border: 1px solid var(--border-color); color: var(--text-secondary); font-weight: 700; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; gap: 4px; }
+        .pos-chip.active { background: var(--accent-primary); color: white; border-color: var(--accent-primary); }
         
         .confirm-box { text-align: center; max-width: 380px !important; }
         .confirm-icon { margin-bottom: 16px; }
         .btn-danger-solid { background: #e74c3c; color: white; padding: 12px; border-radius: 12px; font-weight: 700; }
 
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 3000; backdrop-filter: blur(20px); }
-        .modal-content { padding: 48px; border-radius: 32px; width: 460px; border: 1px solid rgba(255,255,255,0.1); }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.4); display: flex; align-items: center; justify-content: center; z-index: 3000; backdrop-filter: blur(12px); }
+        .modal-content { padding: 48px; border-radius: 32px; width: 460px; background: white; border: 1px solid var(--border-color); box-shadow: var(--shadow-lg); color: var(--text-primary); }
         .modal-content.wide { width: 560px; }
-        .detailed-section { padding: 20px; border-radius: 16px; margin-top: 16px; background: rgba(0,0,0,0.2); }
+        .detailed-section { padding: 24px; border-radius: 20px; margin-top: 20px; background: #f8fafc; border: 1px solid var(--border-color); }
         
         /* 移除冗餘的 input 樣式，改用 index.css 全域定義 */
         .form-group label { display: block; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 6px; }

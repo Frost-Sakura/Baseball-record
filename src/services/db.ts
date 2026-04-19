@@ -43,19 +43,43 @@ export interface Game {
     away: number;
   };
   status: 'upcoming' | 'ongoing' | 'finished';
+  // 先發名單 (球員 ID 陣列)
+  lineups?: {
+    home: number[];
+    away: number[];
+  };
+  settings?: {
+    innings: number; // 預設 9 局或 7 局
+    mercyRule?: number; // 扣殺規則
+  };
+}
+
+// 賽事動作紀錄
+export interface GameLog {
+  id?: number;
+  gameId: number;
+  inning: number;
+  half: 'top' | 'bottom';
+  batterId: number;
+  pitcherId: number;
+  result: string; // '1B', '2B', '3B', 'HR', 'K', 'BB', 'OUT', 'ERROR' 等
+  description?: string;
+  timestamp: number;
 }
 
 export class SmartScoreDB extends Dexie {
   players!: Table<Player>;
   teams!: Table<Team>;
   games!: Table<Game>;
+  gameLogs!: Table<GameLog>;
 
   constructor() {
     super('SmartScoreDB');
-    this.version(4).stores({ // 升級版本到 4
+    this.version(5).stores({ // 升級版本到 5
       players: '++id, name, number, teamId',
       teams: '++id, name, isPrimary',
-      games: '++id, date, homeTeamId, awayTeamId, status'
+      games: '++id, date, homeTeamId, awayTeamId, status',
+      gameLogs: '++id, gameId, inning, batterId'
     });
   }
 }

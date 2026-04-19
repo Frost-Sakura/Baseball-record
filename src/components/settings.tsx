@@ -9,21 +9,11 @@ export const Settings: React.FC = () => {
   const handleResetSystem = async () => {
     setIsResetting(true);
     try {
-      // 徹底刪除資料庫
       await db.delete();
-      
-      // 清除可能存在的本地快取
       localStorage.clear();
       sessionStorage.clear();
-      
-      console.log('Database and storage cleared successfully.');
-      
-      // 稍微延遲一下讓使用者看到成功狀態
-      setTimeout(() => {
-        window.location.href = '/';
-      }, 1000);
+      setTimeout(() => { window.location.href = '/'; }, 1000);
     } catch (err) {
-      console.error('Reset error:', err);
       alert('重設失敗，請嘗試手動清除瀏覽器資料。');
       setIsResetting(false);
       setShowConfirm(false);
@@ -46,13 +36,10 @@ export const Settings: React.FC = () => {
           <div className="setting-item">
             <div className="info">
               <span className="label">主題模式</span>
-              <span className="desc">切換深色或淺色視覺主題</span>
+              <span className="desc">切換深色或淺色視覺主題 (目前僅支援亮色)</span>
             </div>
             <div className="control">
-              <button className="btn-secondary small" onClick={() => alert('主題切換功能開發中')}>
-                <Moon size={18} strokeWidth={1.5} />
-                <span>切換</span>
-              </button>
+              <span className="wip-tag">WIP</span>
             </div>
           </div>
         </section>
@@ -67,11 +54,7 @@ export const Settings: React.FC = () => {
               <span className="label">重設系統</span>
               <span className="desc">刪除所有本地資料（不可復原）</span>
             </div>
-            <button 
-              className="btn-danger" 
-              onClick={() => setShowConfirm(true)}
-              style={{ pointerEvents: 'auto', cursor: 'pointer' }}
-            >
+            <button className="btn-danger-outline" onClick={() => setShowConfirm(true)}>
               清除所有資料
             </button>
           </div>
@@ -83,30 +66,25 @@ export const Settings: React.FC = () => {
             <h3>關於 SmartScore</h3>
           </div>
           <div className="about-content">
-            <p>版本：v0.1.5-alpha</p>
-            <p>本專案由 Antigravity 驅動，專為業餘與半專業棒球隊設計。</p>
+            <p>版本：v0.2.0-light (Outdoor Optimized)</p>
+            <p>本專案專為業餘與半專業棒球隊設計，優化強光下的閱讀體驗。</p>
           </div>
         </section>
       </div>
 
-      {/* 自定義確認彈窗 - 確保不被瀏覽器攔截 */}
       {showConfirm && (
-        <div className="modal-overlay danger">
-          <div className="modal-content glass confirm-box">
-            <div className="confirm-icon">
-              {isResetting ? <Loader2 size={48} className="animate-spin" color="#e74c3c" /> : <AlertTriangle size={48} color="#e74c3c" />}
+        <div className="modal-overlay">
+          <div className="modal-content text-center">
+            <div className="confirm-icon-large">
+              {isResetting ? <Loader2 size={64} className="animate-spin" color="var(--accent-red)" /> : <AlertTriangle size={64} color="var(--accent-red)" />}
             </div>
-            <h2>{isResetting ? '正在清除...' : '確認重設系統？'}</h2>
-            <p>此動作將永久刪除「所有」球隊、球員與賽事紀錄，系統將恢復為初始狀態。</p>
+            <h2 className="modal-title">{isResetting ? '正在清除...' : '確認重設系統？'}</h2>
+            <p className="modal-desc">此動作將永久刪除「所有」球隊、球員與賽事紀錄，且無法復原。</p>
             
             {!isResetting && (
-              <div className="form-actions row">
-                <button type="button" className="btn-secondary flex-1" onClick={() => setShowConfirm(false)}>
-                  取消
-                </button>
-                <button type="button" className="btn-danger-solid flex-1" onClick={handleResetSystem}>
-                  是的，全部刪除
-                </button>
+              <div className="modal-actions">
+                <button className="btn-secondary" onClick={() => setShowConfirm(false)}>取消</button>
+                <button className="btn-danger-solid" onClick={handleResetSystem}>確認全部刪除</button>
               </div>
             )}
           </div>
@@ -114,40 +92,33 @@ export const Settings: React.FC = () => {
       )}
 
       <style>{`
-        .settings-page { padding: var(--space-xl); max-width: 800px; margin: 0 auto; position: relative; }
+        .settings-page { padding: var(--space-xl); max-width: 800px; margin: 0 auto; }
         .settings-grid { display: flex; flex-direction: column; gap: var(--space-lg); margin-top: var(--space-xl); }
-        .settings-section { padding: var(--space-xl); border-radius: var(--radius-lg); }
-        .section-title { display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-xl); padding-bottom: var(--space-sm); border-bottom: 1px solid var(--border-color); color: var(--accent-primary); }
-        .setting-item { display: flex; justify-content: space-between; align-items: center; padding: var(--space-md) 0; }
-        .setting-item:not(:last-child) { border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
-        .setting-item .label { display: block; font-weight: 600; font-size: 1.1rem; }
-        .setting-item .desc { font-size: 0.85rem; color: var(--text-muted); }
-
-        .btn-danger {
-          background: rgba(231, 76, 60, 0.1);
-          color: #e74c3c;
-          border: 1px solid rgba(231, 76, 60, 0.2);
-          padding: 10px 20px;
-          border-radius: 8px;
-          font-weight: 600;
-          transition: all 0.2s;
-          cursor: pointer;
-          pointer-events: auto;
-        }
-        .btn-danger:hover { background: #e74c3c; color: #fff; transform: translateY(-2px); }
-        .btn-danger:active { transform: scale(0.95); }
-
-        .btn-secondary.small { padding: 6px 12px; font-size: 0.9rem; }
-
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 5000; backdrop-filter: blur(20px); }
-        .modal-content { padding: 40px; border-radius: 24px; width: 380px; text-align: center; border: 1px solid rgba(255,255,255,0.1); }
-        .confirm-icon { margin-bottom: 20px; display: flex; justify-content: center; }
-        .btn-danger-solid { background: #e74c3c; color: white; padding: 12px; border-radius: 12px; font-weight: 700; width: 100%; }
+        .settings-section { padding: 32px; border-radius: 24px; background: white; border: 1px solid var(--border-color); }
+        .section-title { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; color: var(--accent-primary); border-bottom: 1px solid var(--border-color); padding-bottom: 12px; }
+        .section-title h3 { font-size: 1.2rem; font-weight: 800; }
         
+        .setting-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; }
+        .setting-item .label { font-weight: 700; font-size: 1.1rem; }
+        .setting-item .desc { font-size: 0.9rem; color: var(--text-muted); }
+        
+        .wip-tag { background: var(--bg-tertiary); color: var(--text-muted); padding: 4px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 800; }
+        
+        .btn-danger-outline { border: 2px solid #fca5a5; color: var(--accent-red); padding: 10px 20px; border-radius: 12px; font-weight: 700; }
+        .btn-danger-outline:hover { background: #fef2f2; border-color: var(--accent-red); }
+        
+        .text-center { text-align: center; }
+        .confirm-icon-large { margin-bottom: 24px; display: flex; justify-content: center; }
+        .modal-title { font-size: 1.8rem; font-weight: 900; margin-bottom: 12px; }
+        .modal-desc { color: var(--text-secondary); line-height: 1.6; }
+        
+        .btn-danger-solid { background: var(--accent-red); color: white; border-radius: 12px; font-weight: 800; }
+        .btn-danger-solid:hover { background: #b91c1c; transform: translateY(-2px); }
+
         .animate-spin { animation: spin 1s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
-        .about-content { font-size: 0.9rem; color: var(--text-secondary); line-height: 1.6; }
+        .about-content { font-size: 0.95rem; color: var(--text-secondary); line-height: 1.8; }
       `}</style>
     </div>
   );
