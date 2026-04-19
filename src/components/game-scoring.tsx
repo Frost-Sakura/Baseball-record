@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { db, type Game, type Player } from '../services/db';
+import React, { useState, useEffect } from 'react';
+import { db, type Game, type Player, type GameLog } from '../services/db';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronLeft, RotateCcw, Save, Users, Zap, AlertCircle, X, ChevronRight, ShieldAlert } from 'lucide-react';
+import { ChevronLeft, RotateCcw, Save, Users, Zap, X, ChevronRight, ShieldAlert, Target, Flag } from 'lucide-react';
 
 interface GameScoringProps { gameId: number; onExit: () => void; }
 
@@ -11,6 +11,7 @@ interface GameStateSnapshot {
   runners: { 1: number | null, 2: number | null, 3: number | null };
   score: { home: number, away: number };
   homeBatterIdx: number; awayBatterIdx: number;
+  lastLogId?: number;
 }
 
 export const GameScoring: React.FC<GameScoringProps> = ({ gameId, onExit }) => {
@@ -26,9 +27,12 @@ export const GameScoring: React.FC<GameScoringProps> = ({ gameId, onExit }) => {
   const [awayBatterIdx, setAwayBatterIdx] = useState(0);
   const [history, setHistory] = useState<GameStateSnapshot[]>([]);
   
+  // UI 狀態
   const [activeBaseMenu, setActiveBaseMenu] = useState<number | null>(null);
   const [showSpecialMenu, setShowSpecialMenu] = useState(false);
   const [showErrorSelector, setShowErrorSelector] = useState(false);
+  const [showOutSelector, setShowOutSelector] = useState(false);
+  const [showEndGameSelector, setShowEndGameSelector] = useState(false);
 
   const { data: game } = useQuery({ queryKey: ['game', gameId], queryFn: () => db.games.get(gameId) });
   const { data: homePlayers } = useQuery({ queryKey: ['players', game?.homeTeamId], queryFn: () => game ? db.players.where('teamId').equals(game.homeTeamId).toArray() : [], enabled: !!game });
@@ -37,17 +41,38 @@ export const GameScoring: React.FC<GameScoringProps> = ({ gameId, onExit }) => {
   const currentBatterIdx = half === 'top' ? awayBatterIdx : homeBatterIdx;
   const currentLineup = half === 'top' ? game?.lineups?.away : game?.lineups?.home;
   const currentBatterId = currentLineup ? currentLineup[currentBatterIdx] : null;
-  const currentBatter = (half === 'top' ? awayPlayers : homePlayers)?.find(p => p.id === currentBatterId);
-  const defensivePlayers = half === 'top' ? homePlayers : awayPlayers;
 
-  const saveToHistory = () => {
-    const snapshot: GameStateSnapshot = { inning, half, balls, strikes, outs, runners: { ...runners }, score: { ...score }, homeBatterIdx, awayBatterIdx };
+  const addLog = async (actionType: string, result: string, metadata: any = {}) => {
+    const logEntry: Omit<GameLog, 'id'> = {
+      gameId,
+      inning,
+      half,
+      batterId: currentBatterId || 0,
+      pitcherId: 0,
+      actionType,
+      result,
+      timestamp: Date.now(),
+      ...metadata
+    };
+    const logId = await db.gameLogs.add(logEntry as GameLog);
+    return logId as number;
+  };
+
+  const saveToHistory = async (logId?: number) => {
+    const snapshot: GameStateSnapshot = { 
+      inning, half, balls, strikes, outs, 
+      runners: { ...runners }, 
+      score: { ...score }, 
+      homeBatterIdx, awayBatterIdx,
+      lastLogId: logId
+    };
     setHistory(prev => [snapshot, ...prev].slice(0, 20));
   };
 
-  const handleUndo = () => {
+  const handleUndo = async () => {
     if (history.length === 0) return;
     const [lastState, ...rest] = history;
+    if (lastState.lastLogId) await db.gameLogs.delete(lastState.lastLogId);
     setInning(lastState.inning); setHalf(lastState.half); setBalls(lastState.balls); setStrikes(lastState.strikes);
     setOuts(lastState.outs); setRunners(lastState.runners); setScore(lastState.score);
     setHomeBatterIdx(lastState.homeBatterIdx); setAwayBatterIdx(lastState.awayBatterIdx);
@@ -57,19 +82,26 @@ export const GameScoring: React.FC<GameScoringProps> = ({ gameId, onExit }) => {
   const resetCount = () => { setBalls(0); setStrikes(0); };
   const nextBatter = () => { resetCount(); if (half === 'top') setAwayBatterIdx(p => (p + 1) % 9); else setHomeBatterIdx(p => (p + 1) % 9); };
 
-  const handleBall = () => { saveToHistory(); if (balls === 3) handleWalk(); else setBalls(p => p + 1); };
-  const handleStrike = () => { saveToHistory(); if (strikes === 2) handleOut(); else setStrikes(p => p + 1); };
-  const handleOut = () => {
-    saveToHistory();
-    if (outs === 2) { 
-      setOuts(0); setRunners({ 1: null, 2: null, 3: null }); 
-      if (half === 'bottom') { setInning(p => p + 1); setHalf('top'); } else setHalf('bottom'); 
-    } else setOuts(p => p + 1);
+  const handleBall = async () => { 
+    const logId = await addLog('PITCH', 'Ball');
+    saveToHistory(logId); if (balls === 3) handleWalk(); else setBalls(p => p + 1); 
+  };
+  const handleStrike = async () => { 
+    const logId = await addLog('PITCH', 'Strike');
+    saveToHistory(logId); if (strikes === 2) handleOut('三振 (K)'); else setStrikes(p => p + 1); 
+  };
+  const handleOut = async (outType: string) => {
+    const logId = await addLog('OUT', outType);
+    saveToHistory(logId);
+    if (outs === 2) { setOuts(0); setRunners({ 1: null, 2: null, 3: null }); if (half === 'bottom') { setInning(p => p + 1); setHalf('top'); } else setHalf('bottom'); } 
+    else setOuts(p => p + 1);
     nextBatter();
+    setShowOutSelector(false);
   };
 
-  const handleWalk = () => {
-    saveToHistory();
+  const handleWalk = async (type: string = '保送 (BB)') => {
+    const logId = await addLog('WALK', type);
+    saveToHistory(logId);
     const newRunners = { ...runners }; let runs = 0;
     if (newRunners[1]) { if (newRunners[2]) { if (newRunners[3]) runs++; newRunners[3] = newRunners[2]; } newRunners[2] = newRunners[1]; }
     newRunners[1] = currentBatterId; setRunners(newRunners);
@@ -77,8 +109,10 @@ export const GameScoring: React.FC<GameScoringProps> = ({ gameId, onExit }) => {
     nextBatter();
   };
 
-  const handleHit = (bases: number) => {
-    saveToHistory();
+  const handleHit = async (bases: number) => {
+    const typeMap = ['一壘安打', '二壘安打', '三壘安打', '全壘打'];
+    const logId = await addLog('HIT', typeMap[bases - 1]);
+    saveToHistory(logId);
     const newRunners = { 1: null, 2: null, 3: null } as any; let runs = 0;
     [3, 2, 1].forEach(base => {
       const rid = (runners as any)[base];
@@ -90,8 +124,14 @@ export const GameScoring: React.FC<GameScoringProps> = ({ gameId, onExit }) => {
     nextBatter();
   };
 
-  const handleRunnerSteal = (fromBase: number) => {
-    saveToHistory();
+  const handleErrorRecord = async (player: Player) => {
+    const logId = await addLog('ERROR', `失誤 (${player.name})`, { errorPlayerId: player.id });
+    saveToHistory(logId); handleHit(1); setShowErrorSelector(false);
+  };
+
+  const handleRunnerSteal = async (fromBase: number) => {
+    const logId = await addLog('STEAL', `從 ${fromBase} 壘推進`, { fromBase });
+    saveToHistory(logId);
     const newRunners = { ...runners };
     const rid = (newRunners as any)[fromBase];
     if (rid) {
@@ -102,24 +142,45 @@ export const GameScoring: React.FC<GameScoringProps> = ({ gameId, onExit }) => {
     setRunners(newRunners); setActiveBaseMenu(null);
   };
 
-  const handleRunnerOut = (fromBase: number) => {
-    saveToHistory();
+  const handleRunnerOut = async (fromBase: number) => {
+    const logId = await addLog('RUNNER_OUT', `在 ${fromBase} 壘出局`, { fromBase });
+    saveToHistory(logId);
     const newRunners = { ...runners }; (newRunners as any)[fromBase] = null; setRunners(newRunners);
     if (outs === 2) { setOuts(0); setRunners({ 1: null, 2: null, 3: null }); setHalf(h => h === 'top' ? 'bottom' : 'top'); if (half === 'bottom') setInning(i => i + 1); }
     else setOuts(p => p + 1);
     setActiveBaseMenu(null);
   };
 
+  const handleEndGame = async (reason: string) => {
+    const finalStatus = reason === '保留比賽 (因雨暫停)' ? 'suspended' : 'finished';
+    await addLog(finalStatus === 'suspended' ? 'GAME_SUSPENDED' : 'GAME_END', reason);
+    await db.games.update(gameId, { status: finalStatus, score });
+    await queryClient.invalidateQueries({ queryKey: ['games'] });
+    onExit();
+  };
+
+  const currentBatter = (half === 'top' ? awayPlayers : homePlayers)?.find(p => p.id === currentBatterId);
+  const defensivePlayers = half === 'top' ? homePlayers : awayPlayers;
+
   return (
     <div className="scoring-layout">
       <nav className="scoring-nav glass">
         <button className="back-btn" onClick={onExit}><ChevronLeft /> 返回</button>
         <div className="game-summary">
-          <div className="team-score"><span>{half === 'top' ? '主' : '客'} (守)</span><span className="points">{half === 'top' ? score.home : score.away}</span></div>
+          <div className={`team-score ${half === 'top' ? 'is-offense' : ''}`}>
+            <span className="team-label">客隊 {half === 'top' ? '(攻)' : '(守)'}</span>
+            <span className="points">{score.away}</span>
+          </div>
           <div className="vs-divider">:</div>
-          <div className="team-score"><span className="points">{half === 'top' ? score.away : score.home}</span><span>{half === 'top' ? '客' : '主'} (攻)</span></div>
+          <div className={`team-score ${half === 'bottom' ? 'is-offense' : ''}`}>
+            <span className="points">{score.home}</span>
+            <span className="team-label">{half === 'bottom' ? '(攻)' : '(守)'} 主隊</span>
+          </div>
         </div>
-        <button className="save-btn"><Save size={18} /> 存檔</button>
+        <div className="nav-actions">
+          <button className="end-game-btn" onClick={() => setShowEndGameSelector(true)}><Flag size={18} /> 結束比賽</button>
+          <button className="save-btn" onClick={() => alert('賽事已自動儲存至本地資料庫')}><Save size={18} /> 存檔</button>
+        </div>
       </nav>
 
       <main className="scoring-main">
@@ -175,12 +236,12 @@ export const GameScoring: React.FC<GameScoringProps> = ({ gameId, onExit }) => {
             <button className="action-btn hit hit-1" onClick={() => handleHit(1)}>一壘安打</button>
             <button className="action-btn hit hit-2" onClick={() => handleHit(2)}>二壘安打</button>
             <button className="action-btn hit hit-3" onClick={() => handleHit(3)}>三壘安打</button>
-            <button className="action-btn hit-hr" onClick={() => handleHit(4)}>全壘打</button>
+            <button className="action-btn hit hit-hr" onClick={() => handleHit(4)}>全壘打</button>
           </div>
 
           <div className="action-group secondary">
             <button className="action-btn foul" onClick={() => { saveToHistory(); if (strikes < 2) setStrikes(s => s + 1); }}>界外 (F)</button>
-            <button className="action-btn out-manual" onClick={handleOut}>直接出局</button>
+            <button className="action-btn out-manual" onClick={() => setShowOutSelector(true)}>出局</button>
             <button className="action-btn error" onClick={() => setShowErrorSelector(true)}>失誤上壘</button>
           </div>
           
@@ -191,13 +252,13 @@ export const GameScoring: React.FC<GameScoringProps> = ({ gameId, onExit }) => {
         </section>
       </main>
 
-      {/* 彈窗選擇器 (亮色優化) */}
-      {(showErrorSelector || showSpecialMenu) && (
-        <div className="overlay-popup" onClick={() => { setShowErrorSelector(false); setShowSpecialMenu(false); }}>
+      {/* 彈窗選擇器 */}
+      {(showErrorSelector || showSpecialMenu || showOutSelector || showEndGameSelector) && (
+        <div className="overlay-popup" onClick={() => { setShowErrorSelector(false); setShowSpecialMenu(false); setShowOutSelector(false); setShowEndGameSelector(false); }}>
           <div className="selector-card glass" onClick={e => e.stopPropagation()}>
             <div className="card-header">
-              <h3>{showErrorSelector ? '記錄失誤對象' : '特殊紀錄'}</h3>
-              <button onClick={() => { setShowErrorSelector(false); setShowSpecialMenu(false); }}><X/></button>
+              <h3>{showErrorSelector ? '記錄失誤對象' : showOutSelector ? '選擇出局型態' : showEndGameSelector ? '結束比賽原因' : '特殊紀錄'}</h3>
+              <button onClick={() => { setShowErrorSelector(false); setShowSpecialMenu(false); setShowOutSelector(false); setShowEndGameSelector(false); }}><X/></button>
             </div>
             
             {showErrorSelector && (
@@ -212,11 +273,31 @@ export const GameScoring: React.FC<GameScoringProps> = ({ gameId, onExit }) => {
               </div>
             )}
 
+            {showOutSelector && (
+              <div className="menu-grid">
+                <button className="menu-item" onClick={() => handleOut('滾地球 (G)')}>滾地球 (G)</button>
+                <button className="menu-item" onClick={() => handleOut('外野飛球 (F)')}>外野飛球 (F)</button>
+                <button className="menu-item" onClick={() => handleOut('內野飛球 (P)')}>內野飛球 (P)</button>
+                <button className="menu-item" onClick={() => handleOut('平飛球 (L)')}>平飛球 (L)</button>
+                <button className="menu-item" onClick={() => handleOut('三振 (K)')}>三振 (K)</button>
+                <button className="menu-item danger" onClick={() => handleOut('其他出局')}>其他出局</button>
+              </div>
+            )}
+
+            {showEndGameSelector && (
+              <div className="menu-grid">
+                <button className="menu-item" onClick={() => handleEndGame('正常結束')}>正常結束</button>
+                <button className="menu-item" onClick={() => handleEndGame('保留比賽 (因雨暫停)')}>保留比賽</button>
+                <button className="menu-item" onClick={() => handleEndGame('提前結束 (扣殺)')}>提前結束</button>
+                <button className="menu-item danger" onClick={() => handleEndGame('其他原因結束')}>其他原因</button>
+              </div>
+            )}
+
             {showSpecialMenu && (
               <div className="menu-grid">
-                <button className="menu-item" onClick={() => { handleWalk(); setShowSpecialMenu(false); }}>觸身球 (HBP)</button>
-                <button className="menu-item" onClick={() => { handleWalk(); setShowSpecialMenu(false); }}>故意四壞 (IBB)</button>
-                <button className="menu-item" onClick={() => { handleOut(); setShowSpecialMenu(false); }}>不死三振 (K-WP)</button>
+                <button className="menu-item" onClick={() => { handleWalk('觸身球 (HBP)'); setShowSpecialMenu(false); }}>觸身球 (HBP)</button>
+                <button className="menu-item" onClick={() => { handleWalk('故意四壞 (IBB)'); setShowSpecialMenu(false); }}>故意四壞 (IBB)</button>
+                <button className="menu-item" onClick={() => { handleOut('不死三振'); setShowSpecialMenu(false); }}>不死三振 (WP/PB)</button>
                 <button className="menu-item" onClick={() => { alert('妨礙打擊已記錄'); setShowSpecialMenu(false); }}>妨礙打擊</button>
               </div>
             )}
@@ -227,10 +308,19 @@ export const GameScoring: React.FC<GameScoringProps> = ({ gameId, onExit }) => {
       <style>{`
         .scoring-layout { height: 100vh; background: var(--bg-primary); display: flex; flex-direction: column; overflow: hidden; color: var(--text-primary); }
         .scoring-nav { height: 72px; padding: 0 32px; display: flex; align-items: center; justify-content: space-between; background: white; border-bottom: 1px solid var(--border-color); }
+        .nav-actions { display: flex; gap: 12px; }
+        
         .game-summary { display: flex; align-items: center; gap: 32px; }
-        .team-score { display: flex; align-items: center; gap: 12px; font-weight: 800; font-size: 1.1rem; }
-        .team-score .points { font-size: 2.2rem; color: var(--accent-blue); font-variant-numeric: tabular-nums; }
-        .vs-divider { opacity: 0.3; font-weight: 900; }
+        .team-score { display: flex; align-items: center; gap: 12px; font-weight: 700; font-size: 1rem; color: var(--text-muted); transition: all 0.3s; }
+        .team-score.is-offense { color: var(--text-primary); }
+        .team-score.is-offense .team-label { color: var(--accent-primary); font-weight: 900; }
+        .team-score.is-offense .points { color: var(--accent-blue); transform: scale(1.1); }
+        .team-score .points { font-size: 2.2rem; font-variant-numeric: tabular-nums; }
+        .team-label { font-size: 0.9rem; }
+        .vs-divider { opacity: 0.3; font-weight: 900; margin: 0 10px; }
+
+        .end-game-btn { background: #fef2f2; color: #dc2626; border: 1px solid #fca5a5; padding: 10px 18px; border-radius: 12px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+        .end-game-btn:hover { background: #fee2e2; border-color: #dc2626; }
 
         .scoring-main { flex: 1; display: grid; grid-template-columns: 1fr 400px; gap: 40px; padding: 24px 40px; }
         .dashboard-section { display: flex; flex-direction: column; align-items: center; gap: 24px; }
@@ -287,7 +377,7 @@ export const GameScoring: React.FC<GameScoringProps> = ({ gameId, onExit }) => {
         
         .action-btn.hit { border-color: var(--accent-blue); color: var(--accent-blue); background: #f0f9ff; }
         .action-btn.hit:hover { background: var(--accent-blue); color: white; }
-        .action-btn.hit-hr { grid-column: span 2; border-color: var(--accent-primary); color: var(--accent-primary); background: #f0fdf4; }
+        .action-btn.hit-hr { border-color: var(--accent-primary); color: var(--accent-primary); background: #f0fdf4; }
         .action-btn.hit-hr:hover { background: var(--accent-primary); color: white; }
         
         .action-btn.foul { color: #ea580c; border-color: #fdba74; }
@@ -311,6 +401,7 @@ export const GameScoring: React.FC<GameScoringProps> = ({ gameId, onExit }) => {
         .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
         .menu-item { padding: 24px; border-radius: 16px; background: #f8fafc; border: 2px solid #e2e8f0; font-weight: 800; font-size: 1.1rem; }
         .menu-item:hover { border-color: var(--accent-primary); color: var(--accent-primary); background: #f0fdf4; }
+        .menu-item.danger { color: var(--accent-red); }
       `}</style>
     </div>
   );

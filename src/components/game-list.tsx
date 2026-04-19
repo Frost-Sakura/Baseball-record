@@ -96,11 +96,11 @@ export const GameList: React.FC = () => {
           games?.map((g) => {
             const { month, day } = formatDate(g.date);
             return (
-              <div key={g.id} className="game-item glass" onClick={() => {
-                setActiveGameId(g.id!);
-                if (g.status === 'upcoming') setViewState('lineup');
-                else if (g.status === 'ongoing') setViewState('scoring');
-              }}>
+                <div key={g.id} className="game-item glass" onClick={() => {
+                  setActiveGameId(g.id!);
+                  if (g.status === 'upcoming') setViewState('lineup');
+                  else if (g.status === 'ongoing' || g.status === 'suspended') setViewState('scoring');
+                }}>
                 <div className="game-date">
                   <span className="month">{month}</span>
                   <span className="day">{day}</span>
@@ -114,7 +114,7 @@ export const GameList: React.FC = () => {
                   <div className="meta">
                     <span className="location">
                       {g.status === 'upcoming' ? <Calendar size={14} /> : <MapPin size={14} />} 
-                      {g.status === 'upcoming' ? '尚未開始' : g.status === 'ongoing' ? '進行中' : '已結束'}
+                      {g.status === 'upcoming' ? '尚未開始' : g.status === 'ongoing' ? '進行中' : g.status === 'suspended' ? '保留中' : '已結束'}
                     </span>
                     <span className={`status-tag ${g.status}`}>{g.status}</span>
                   </div>
@@ -164,6 +164,7 @@ export const GameList: React.FC = () => {
         .status-tag { padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; }
         .status-tag.upcoming { background: rgba(255, 255, 255, 0.1); color: var(--text-muted); }
         .status-tag.ongoing { background: rgba(46, 204, 113, 0.2); color: var(--accent-primary); }
+        .status-tag.suspended { background: #fef3c7; color: #d97706; }
         .status-tag.finished { background: var(--bg-tertiary); color: var(--text-secondary); }
         .game-score { font-size: 1.8rem; font-weight: 900; color: var(--accent-primary); font-variant-numeric: tabular-nums; }
         .chevron-btn { background: none; color: var(--text-muted); transition: all 0.2s; }

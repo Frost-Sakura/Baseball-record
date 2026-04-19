@@ -42,7 +42,7 @@ export interface Game {
     home: number;
     away: number;
   };
-  status: 'upcoming' | 'ongoing' | 'finished';
+  status: 'upcoming' | 'ongoing' | 'finished' | 'suspended';
   // 先發名單 (球員 ID 陣列)
   lineups?: {
     home: number[];
