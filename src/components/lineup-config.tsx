@@ -16,6 +16,8 @@ export const LineupConfig: React.FC<LineupConfigProps> = ({ gameId, onComplete, 
   const [activeSide, setActiveSide] = useState<'home' | 'away'>('away'); // 通常客隊先打
   const [homeLineup, setHomeLineup] = useState<(number | null)[]>(Array(9).fill(null));
   const [awayLineup, setAwayLineup] = useState<(number | null)[]>(Array(9).fill(null));
+  const [homePitcher, setHomePitcher] = useState<number | null>(null);
+  const [awayPitcher, setAwayPitcher] = useState<number | null>(null);
 
   // 1. 抓取比賽資訊
   const { data: game } = useQuery({
@@ -53,6 +55,8 @@ export const LineupConfig: React.FC<LineupConfigProps> = ({ gameId, onComplete, 
   const currentPlayers = activeSide === 'home' ? homePlayers : awayPlayers;
   const currentLineup = activeSide === 'home' ? homeLineup : awayLineup;
   const setLineup = activeSide === 'home' ? setHomeLineup : setAwayLineup;
+  const currentPitcher = activeSide === 'home' ? homePitcher : awayPitcher;
+  const setPitcher = activeSide === 'home' ? setHomePitcher : setAwayPitcher;
 
   const handleSelectPlayer = (slotIndex: number, playerId: number) => {
     const newLineup = [...currentLineup];
@@ -63,8 +67,8 @@ export const LineupConfig: React.FC<LineupConfigProps> = ({ gameId, onComplete, 
   const isLineupComplete = (lineup: (number | null)[]) => lineup.every(id => id !== null);
 
   const handleSaveLineup = async () => {
-    if (!isLineupComplete(homeLineup) || !isLineupComplete(awayLineup)) {
-      alert('請先排滿雙方 1-9 棒的先發名單');
+    if (!isLineupComplete(homeLineup) || !isLineupComplete(awayLineup) || !homePitcher || !awayPitcher) {
+      alert('請先排滿雙方 1-9 棒的先發名單，並設定先發投手');
       return;
     }
 
@@ -72,7 +76,9 @@ export const LineupConfig: React.FC<LineupConfigProps> = ({ gameId, onComplete, 
       await db.games.update(gameId, {
         lineups: {
           home: homeLineup as number[],
-          away: awayLineup as number[]
+          away: awayLineup as number[],
+          homePitcher,
+          awayPitcher
         },
         status: 'ongoing' // 設定完陣容後，比賽狀態改為進行中
       });
@@ -105,6 +111,35 @@ export const LineupConfig: React.FC<LineupConfigProps> = ({ gameId, onComplete, 
 
         <div className="lineup-content">
           <div className="lineup-scroll-area">
+            {/* 先發投手設定 */}
+            <div className={`lineup-slot glass ${currentPitcher ? 'filled' : ''}`} style={{ marginBottom: '16px', border: currentPitcher ? '2px solid var(--accent-blue)' : '2px dashed var(--accent-blue)' }}>
+              <div className="slot-number" style={{ background: 'var(--accent-blue)', color: 'white' }}>P</div>
+              <div className="slot-info">
+                {currentPitcher ? (
+                  <>
+                    <span className="player-name">{currentPlayers?.find(p => p.id === currentPitcher)?.name}</span>
+                    <span className="player-meta">先發投手</span>
+                  </>
+                ) : (
+                  <span className="placeholder">設定先發投手...</span>
+                )}
+              </div>
+              <select 
+                className="player-select" 
+                value={currentPitcher || ''} 
+                onChange={(e) => setPitcher(Number(e.target.value))}
+              >
+                <option value="">選擇投手</option>
+                {currentPlayers?.map(p => (
+                  <option key={p.id} value={p.id}>
+                    #{p.number} {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="lineup-divider">先發打線 (1-9 棒)</div>
+
             {currentLineup.map((pId, idx) => {
               const selectedPlayer = currentPlayers?.find(p => p.id === pId);
               return (
@@ -141,11 +176,11 @@ export const LineupConfig: React.FC<LineupConfigProps> = ({ gameId, onComplete, 
             <div className="info-card glass">
               <h3>陣容檢查</h3>
               <div className="check-list">
-                <div className={`check-item ${isLineupComplete(awayLineup) ? 'done' : ''}`}>
-                  <div className="dot"></div> 客隊打序已完成
+                <div className={`check-item ${isLineupComplete(awayLineup) && awayPitcher ? 'done' : ''}`}>
+                  <div className="dot"></div> 客隊陣容已完成
                 </div>
-                <div className={`check-item ${isLineupComplete(homeLineup) ? 'done' : ''}`}>
-                  <div className="dot"></div> 主隊打序已完成
+                <div className={`check-item ${isLineupComplete(homeLineup) && homePitcher ? 'done' : ''}`}>
+                  <div className="dot"></div> 主隊陣容已完成
                 </div>
               </div>
               <p className="hint"><AlertCircle size={14} /> 比賽開始後仍可進行球員更換。</p>
@@ -160,9 +195,9 @@ export const LineupConfig: React.FC<LineupConfigProps> = ({ gameId, onComplete, 
 
       <style>{`
         .lineup-config-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-primary); z-index: 2500; display: flex; flex-direction: column; }
-        .lineup-config-modal { flex: 1; display: flex; flex-direction: column; border: none; border-radius: 0; }
+        .lineup-config-modal { flex: 1; display: flex; flex-direction: column; border: none; border-radius: 0; min-height: 0; }
         
-        .lineup-header { padding: 40px 60px 20px; border-bottom: 1px solid var(--border-color); }
+        .lineup-header { padding: 40px 60px 20px; border-bottom: 1px solid var(--border-color); flex-shrink: 0; }
         .header-nav { display: flex; align-items: center; gap: 24px; margin-bottom: 24px; }
         .header-nav h1 { font-size: 2rem; font-weight: 900; }
         .back-btn { display: flex; align-items: center; gap: 6px; color: var(--text-muted); font-weight: 600; }
@@ -173,13 +208,15 @@ export const LineupConfig: React.FC<LineupConfigProps> = ({ gameId, onComplete, 
         .tab-btn.active { background: rgba(46, 204, 113, 0.1); color: var(--accent-primary); border-color: rgba(46, 204, 113, 0.3); }
         .success-icon { color: var(--accent-primary); }
 
-        .lineup-content { flex: 1; display: grid; grid-template-columns: 1fr 320px; gap: 40px; padding: 20px 60px 40px; overflow: hidden; min-height: 0; }
-        .lineup-scroll-area { overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 12px; height: 100%; }
+        .lineup-content { flex: 1; display: grid; grid-template-columns: 1fr 320px; gap: 40px; padding: 20px 60px 0px; overflow: hidden; min-height: 0; }
+        .lineup-scroll-area { overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 12px; padding-bottom: 80px; height: 100%; min-height: 0; }
         
         .lineup-slot { display: flex; align-items: center; padding: 14px 20px; border-radius: 16px; gap: 20px; transition: all 0.2s; border: 1px solid transparent; flex-shrink: 0; }
         .lineup-slot.filled { background: rgba(255,255,255,0.03); border-color: rgba(255,255,255,0.1); }
         .slot-number { width: 30px; height: 30px; background: var(--bg-tertiary); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 900; color: var(--text-muted); font-size: 0.85rem; flex-shrink: 0; }
-        .lineup-slot.filled .slot-number { background: var(--accent-primary); color: #000; }
+        .lineup-slot.filled:not([style*="var(--accent-blue)"]) .slot-number { background: var(--accent-primary); color: #000; }
+        
+        .lineup-divider { text-align: center; font-size: 0.85rem; font-weight: 800; color: var(--text-muted); margin: 8px 0; letter-spacing: 1px; }
         
         .slot-info { flex: 1; display: flex; flex-direction: column; min-width: 0; }
         .player-name { font-size: 1.15rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

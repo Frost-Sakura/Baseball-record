@@ -47,6 +47,8 @@ export interface Game {
   lineups?: {
     home: number[];
     away: number[];
+    homePitcher?: number;
+    awayPitcher?: number;
   };
   settings?: {
     innings: number; // 預設 9 局或 7 局
@@ -62,9 +64,11 @@ export interface GameLog {
   half: 'top' | 'bottom';
   batterId: number;
   pitcherId: number;
-  result: string; // '1B', '2B', '3B', 'HR', 'K', 'BB', 'OUT', 'ERROR' 等
+  actionType: string;
+  result: string;
   description?: string;
   timestamp: number;
+  [key: string]: any; // Allow metadata
 }
 
 export class SmartScoreDB extends Dexie {

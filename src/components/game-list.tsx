@@ -5,8 +5,9 @@ import { Plus, Calendar, MapPin, ChevronRight } from 'lucide-react';
 import { GameSetup } from './game-setup';
 import { LineupConfig } from './lineup-config';
 import { GameScoring } from './game-scoring';
+import { GameReport } from './game-report';
 
-type ViewState = 'list' | 'setup' | 'lineup' | 'scoring';
+type ViewState = 'list' | 'setup' | 'lineup' | 'scoring' | 'report';
 
 export const GameList: React.FC = () => {
   const [viewState, setViewState] = useState<ViewState>('list');
@@ -65,6 +66,10 @@ export const GameList: React.FC = () => {
     );
   }
 
+  if (viewState === 'report' && activeGameId) {
+    return <GameReport gameId={activeGameId} onExit={() => { setViewState('list'); setActiveGameId(null); }} />;
+  }
+
   return (
     <div className="game-page">
       <header className="page-header">
@@ -100,6 +105,7 @@ export const GameList: React.FC = () => {
                   setActiveGameId(g.id!);
                   if (g.status === 'upcoming') setViewState('lineup');
                   else if (g.status === 'ongoing' || g.status === 'suspended') setViewState('scoring');
+                  else if (g.status === 'finished') setViewState('report');
                 }}>
                 <div className="game-date">
                   <span className="month">{month}</span>
