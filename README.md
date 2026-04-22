@@ -18,7 +18,6 @@
 - **前端**：React 18 + TypeScript (Vite)
 - **狀態管理**：Zustand & TanStack Query
 - **本地儲存**：Dexie.js (IndexedDB)
-- **手寫引擎**：Perfect-Freehand
 - **後端 (預計)**：Python FastAPI (5 層架構設計)
 - **部署**：PWA (Progressive Web App)
 
