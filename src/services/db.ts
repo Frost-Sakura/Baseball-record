@@ -71,19 +71,41 @@ export interface GameLog {
   [key: string]: any; // Allow metadata
 }
 
+export interface NewsItem {
+  id?: number;
+  title: string;
+  content: string;
+  category: 'MLB' | 'CPBL' | 'NPB' | 'General';
+  source: string;
+  author?: string;
+  url: string;
+  imageUrl?: string;
+  date: string; // ISO format
+  timestamp: number;
+}
+
+export interface AppMetadata {
+  key: string;
+  value: any;
+}
+
 export class SmartScoreDB extends Dexie {
   players!: Table<Player>;
   teams!: Table<Team>;
   games!: Table<Game>;
   gameLogs!: Table<GameLog>;
+  news!: Table<NewsItem>;
+  metadata!: Table<AppMetadata>;
 
   constructor() {
     super('SmartScoreDB');
-    this.version(5).stores({ // 升級版本到 5
+    this.version(6).stores({ // 升級版本到 6
       players: '++id, name, number, teamId',
       teams: '++id, name, isPrimary',
       games: '++id, date, homeTeamId, awayTeamId, status',
-      gameLogs: '++id, gameId, inning, batterId'
+      gameLogs: '++id, gameId, inning, batterId',
+      news: '++id, title, category, date, timestamp',
+      metadata: 'key'
     });
   }
 }

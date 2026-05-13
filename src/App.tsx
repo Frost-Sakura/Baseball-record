@@ -5,6 +5,7 @@ import { Dashboard } from './components/dashboard'
 import { TeamManagement } from './components/team-management'
 import { GameList } from './components/game-list'
 import { Settings } from './components/settings'
+import { News } from './components/news'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -24,6 +25,7 @@ function App() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/games" element={<GameList />} />
             <Route path="/teams" element={<TeamManagement />} />
+            <Route path="/news" element={<News />} />
             <Route path="/settings" element={<Settings />} />
           </Routes>
         </Layout>

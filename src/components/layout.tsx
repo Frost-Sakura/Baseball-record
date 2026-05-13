@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Trophy, Users, Calendar, Settings, Home } from 'lucide-react';
+import { Trophy, Users, Calendar, Settings, Home, Newspaper } from 'lucide-react';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -19,6 +19,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           <NavItem to="/" icon={<Home size={20} strokeWidth={1.5} />} label="首頁" />
           <NavItem to="/games" icon={<Calendar size={20} strokeWidth={1.5} />} label="賽事紀錄" />
           <NavItem to="/teams" icon={<Users size={20} strokeWidth={1.5} />} label="球隊/球員" />
+          <NavItem to="/news" icon={<Newspaper size={20} strokeWidth={1.5} />} label="棒球新聞" />
           <NavItem to="/settings" icon={<Settings size={20} strokeWidth={1.5} />} label="設定" />
         </nav>
         
